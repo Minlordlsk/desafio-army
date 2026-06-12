@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafio ARMY Supremo 💜</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,600&family=Lato:wght@300;400;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+<style>
+  /* ─── RESET E CONFIGURAÇÕES GERAIS ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --bg-black: #05010a;
+    --card-bg: rgba(18, 10, 28, 0.65);
+    --bts-purple: #7b2fff;
+    --bts-neon: #bb86fc;
+    --army-glow: #00f2fe;
+    --text-white: #f8f5fc;
+    --text-muted: #bdaec6;
+    --border-color: rgba(187, 134, 252, 0.2);
+  }
+
+  body {
+    background-color: var(--bg-black);
+    color: var(--text-white);
+    font-family: 'Lato', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+
+  /* ─── FONDO ANIMADO NEON & PARTÍCULAS ─── */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ─── CONTAINER DO APLICATIVO ─── */
+  .app-container {
+    width: min(480px, 95vw);
+    min-height: min(780px, 92vh);
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(123, 47, 255, 0.15);
+  }
+
+  /* ─── COMPONENTES DE INTERFACE REUTILIZÁVEIS ─── */
+  .screen { display: none; flex-direction: column; height: 100%; flex-grow: 1; }
+  .screen.active { display: flex; animation: fadeIn 0.5s ease forwards; }
+
+  h1, h2, h3 { font-family: 'Lato', sans-serif; font-weight: 700; text-align: center; }
+  
+  .btn {
+    background: linear-gradient(135deg, var(--bts-purple), #521cb5);
+    color: var(--text-white);
+    border: none;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 15px rgba(123, 47, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    width: 100%;
+    margin-top: 15px;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(187, 134, 252, 0.6);
+    filter: brightness(1.1);
+  }
+  .btn:active { transform: translateY(1px); }
+
+  /* Conquistas Notificação Pop-up */
+  #badge-popup {
+    position: fixed;
+    top: -100px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(123, 47, 255, 0.9);
+    border: 1px solid var(--bts-neon);
+    padding: 12px 24px;
+    border-radius: 50px;
+    z-index: 10000;
+    font-weight: 700;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Progress Bar Global */
+  .progress-wrapper { width: 100%; background: rgba(255,255,255,0.05); height: 6px; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--bts-neon), var(--bts-purple)); width: 0%; transition: width 0.4s ease; }
+
+  /* ─── TELA INICIAL ─── */
+  .intro-logo-area { text-align: center; margin: 40px 0 20px; }
+  .logo-bts { font-size: 55px; filter: drop-shadow(0 0 15px var(--bts-purple)); animation: float 4s ease-in-out infinite alternate; }
+  .game-title { font-size: 26px; color: var(--bts-neon); margin-top: 10px; letter-spacing: 1px; }
+  .avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 25px 0; }
+  .avatar-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .avatar-card.selected {
+    background: rgba(123, 47, 255, 0.25);
+    border-color: var(--bts-neon);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(187, 134, 252, 0.4);
+  }
+  .avatar-emoji { font-size: 24px; display: block; margin-bottom: 4px; }
+  .avatar-name { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+
+  /* ─── FASE 1: QUIZ BTS ─── */
+  .quiz-header { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+  .question-box { font-size: 18px; margin-bottom: 25px; line-height: 1.5; font-weight: 700; text-align: center; min-height: 60px; }
+  .options-column { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+  .opt-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-color);
+    padding: 14px;
+    border-radius: 12px;
+    text-align: left;
+    color: var(--text-white);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .opt-btn:hover { background: rgba(187, 134, 252, 0.1); border-color: var(--bts-neon); }
+  .opt-btn.correct { background: #10b981 !important; border-color: #34d399 !important; font-weight: 700; }
+  .opt-btn.wrong { background: #ef4444 !important; border-color: #f87171 !important; }
+
+  /* ─── FASE 2: CAÇA AO CORAÇÃO ─── */
+  .hunting-ground {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-top: 15px;
+  }
+  .hidden-heart {
+    position: absolute;
+    cursor: pointer;
+    font-size: 20px;
+    user-select: none;
+    transition: transform 0.2s ease;
+  }
+  .hidden-heart:hover { transform: scale(1.3); }
+
+  /* ─── FASE 3: JOGO DA MEMÓRIA ─── */
+  .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: auto 0; }
+  .memory-card {
+    height: 80px;
+    background: linear-gradient(135deg, #1f1135, #0d0517);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 28px; cursor: pointer;
+    position: relative; transform-style: preserve-3d;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .memory-card.flipped { transform: rotateY(180deg); background: rgba(123, 47, 255, 0.15); border-color: var(--bts-neon); }
+  .memory-card .card-front { position: absolute; backface-visibility: hidden; transform: rotateY(180deg); }
+  .memory-card .card-back { position: absolute; backface-visibility: hidden; font-size: 18px; color: var(--bts-neon); }
+
+  /* ─── FASE 4: HISTÓRIA INTERATIVA ─── */
+  .story-card { display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 10px; }
+  .story-text { font-size: 16px; line-height: 1.6; color: var(--pale-blue); text-align: center; margin-bottom: 30px; min-height: 120px; }
+
+  /* ─── FASE 5: COMPATIBILIDADE ─── */
+  .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+  .form-group label { font-size: 12px; font-weight: 700; color: var(--bts-neon); text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-group select, .form-group input {
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+    padding: 12px; border-radius: 10px; color: var(--text-white); font-size: 14px; outline: none;
+  }
+  .form-group select:focus, .form-group input:focus { border-color: var(--bts-purple); }
+  .radar-ring {
+    width: 140px; height: 140px; border-radius: 50%;
+    border: 3px dashed var(--bts-neon); margin: 20px auto;
+    display: flex; justify-content: center; align-items: center;
+    animation: rotate 15s linear infinite;
+  }
+  .radar-value { font-size: 32px; font-weight: 700; color: var(--text-white); animation: pulse 2s infinite; }
+
+  /* ─── FASE 6: PRESENTE SECRETO ─── */
+  .poem-layout {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 19px; font-style: italic; line-height: 1.7;
+    color: #e9d5ff; text-align: center; max-height: 380px;
+    overflow-y: auto; padding: 15px; border-radius: 12px;
+    background: rgba(255,255,255,0.02); margin-bottom: 20px;
+  }
+  .letter-layout {
+    font-family: 'Lato', sans-serif; font-size: 14px; line-height: 1.7;
+    color: var(--text-white); text-align: justify; max-height: 380px;
+    overflow-y: auto; padding: 20px; border-radius: 12px;
+    background: rgba(15, 5, 25, 0.8); border: 1px solid rgba(187,134,252,0.3);
+    margin-bottom: 20px; white-space: pre-line;
+  }
+  .final-screen-design { text-align: center; font-family: 'Lato', sans-serif; padding: 10px; }
+  .final-message-text { font-size: 15px; line-height: 1.8; text-align: justify; color: #f3e8ff; white-space: pre-line; margin-top: 15px; }
+
+  /* Efeitos de Queda / Confete */
+  .fx-item { position: fixed; pointer-events: none; z-index: 99999; will-change: transform, opacity; }
+
+  /* ─── ANIMAÇÕES EM CSS ─── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes float { 0% { transform: translateY(0px); } 100% { transform: translateY(-12px); } }
+  @keyframes rotate { 100% { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.05); filter: brightness(1.2); } }
+
+  /* Custom Scrollbar Interna */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+  ::-webkit-scrollbar-thumb { background: var(--bts-purple); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div id="badge-popup">✨ <span id="badge-text">Conquista Desbloqueada!</span></div>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="app-container">
+  
+  <section id="screen-intro" class="screen active">
+    <div class="intro-logo-area">
+      <div class="logo-bts">💜</div>
+      <h1 class="game-title">Desafio ARMY Supremo</h1>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px; letter-spacing: 2px; text-transform: uppercase;">A Jornada do Seu Coração</p>
+    </div>
+    
+    <p style="font-size: 14px; text-align: center; color: var(--pale-blue); line-height: 1.5; margin-bottom: 10px;">
+      Escolha o seu integrante favorito do BTS para ser o seu amuleto e avatar nesta jornada:
+    </p>
+
+    <div class="avatar-grid">
+      <div class="avatar-card" onclick="selectAvatar('🐨', 'RM')">
+        <span class="avatar-emoji">🐨</span><span class="avatar-name">RM</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('🐹', 'Jin')">
+        <span class="avatar-emoji">🐹</span><span class="avatar-name">Jin</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('🐱', 'SUGA')">
+        <span class="avatar-emoji">🐱</span><span class="avatar-name">SUGA</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('🐿️', 'j-hope')">
+        <span class="avatar-emoji">🐿️</span><span class="avatar-name">j-hope</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('🐥', 'Jimin')">
+        <span class="avatar-emoji">🐥</span><span class="avatar-name">Jimin</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('🐯', 'V')">
+        <span class="avatar-emoji">🐯</span><span class="avatar-name">V</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('🐰', 'Jung Kook')">
+        <span class="avatar-emoji">🐰</span><span class="avatar-name">JK</span>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar('👑', 'OT7')">
+        <span class="avatar-emoji">👑</span><span class="avatar-name">OT7</span>
+      </div>
+    </div>
+
+    <button class="btn" style="margin-top: auto;" onclick="startJourney()">Começar Jornada 💜</button>
+  </section>
+
+  <section id="screen-phase1" class="screen">
+    <div class="quiz-header">
+      <span id="quiz-progress-text">Pergunta 1 de 15</span>
+      <span id="quiz-score-live">Pontos: 0</span>
+    </div>
+    <div class="progress-wrapper"><div id="quiz-progress-bar" class="progress-fill"></div></div>
+    
+    <div class="question-box" id="question-text">Buscando pergunta...</div>
+    <div class="options-column" id="options-container"></div>
+  </section>
+
+  <section id="screen-phase1-result" class="screen" style="justify-content: center; text-align: center;">
+    <h2 style="color: var(--bts-neon); margin-bottom: 20px;">Fase 1 Concluída!</h2>
+    <div style="font-size: 60px; margin-bottom: 15px;">📊</div>
+    <p style="font-size: 18px; margin-bottom: 10px;">Você acertou <strong id="quiz-final-correct" style="color: var(--bts-neon);">0</strong> de 15 perguntas.</p>
+    <p style="font-size: 22px; font-weight: 700; color: var(--text-white); margin-bottom: 40px;" id="quiz-rank-label">Nível: Army</p>
+    <button class="btn" onclick="goToPhase2()">Avançar para Fase 2 ➡️</button>
+  </section>
+
+  <section id="screen-phase2" class="screen">
+    <div class="quiz-header">
+      <span>Fase 2: Caça ao Coração 💜</span>
+      <span id="heart-counter">Encontrados: 0 / 8</span>
+    </div>
+    <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 10px;">
+      Procure e clique em todos os corações roxos escondidos no cenário submarino abaixo!
+    </p>
+    
+    <div class="hunting-ground" id="heart-ground"></div>
+
+    <div id="heart-success-msg" style="display:none; margin-top:20px; text-align:center; animation: fadeIn 0.5s ease forwards;">
+      <p style="font-family:'Cormorant Garamond', serif; font-size:20px; font-style:italic; color:#e9d5ff; line-height:1.5;">
+        "Seu coração é tão precioso quanto cada momento vivido com quem você ama. 💜"
+      </p>
+      <button class="btn" onclick="goToPhase3()">Ir para o Jogo da Memória ➡️</button>
+    </div>
+  </section>
+
+  <section id="screen-phase3" class="screen">
+    <div class="quiz-header">
+      <span>Fase 3: Memória do BTS</span>
+      <span id="memory-clicks">Tentativas: 0</span>
+    </div>
+    <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 15px;">
+      Encontre os pares correspondentes aos ídolos e símbolos do grupo.
+    </p>
+
+    <div class="memory-grid" id="memory-board"></div>
+    <button class="btn" id="btn-memory-next" style="display:none; margin-top: auto;" onclick="goToPhase4()">Avançar para Fase 4 ➡️</button>
+  </section>
+
+  <section id="screen-phase4" class="screen">
+    <div class="quiz-header"><span>Fase 4: Sua História no Universo BTS</span></div>
+    <div class="story-card">
+      <h3 style="color: var(--bts-neon); margin-bottom: 15px; font-size: 20px;">Você encontrou o BTS em um show</h3>
+      <p class="story-text" id="story-display-text">Carregando enredo...</p>
+      <div class="options-column" id="story-choices-box"></div>
+    </div>
+  </section>
+
+  <section id="screen-phase5" class="screen">
+    <div class="quiz-header"><span>Fase 5: Afinidade & Conexão</span></div>
+    <h3 style="color: var(--bts-neon); margin-bottom: 20px;">Calcular sua Compatibilidade ARMY</h3>
+    
+    <div class="form-group">
+      <label>Quem é seu membro favorito?</label>
+      <select id="comp-bias">
+        <option value="RM">RM (Kim Namjoon)</option>
+        <option value="Jin">Jin (Kim Seokjin)</option>
+        <option value="SUGA">SUGA (Min Yoongi)</option>
+        <option value="j-hope">j-hope (Jung Hoseok)</option>
+        <option value="Jimin">Jimin (Park Jimin)</option>
+        <option value="V">V (Kim Taehyung)</option>
+        <option value="Jung Kook">Jung Kook (Jeon Jungkook)</option>
+        <option value="OT7">Todos eles (OT7)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Qual sua música favorita do BTS?</label>
+      <input type="text" id="comp-song" placeholder="Ex: Dynamite, Spring Day, Save Me...">
+    </div>
+
+    <div class="form-group">
+      <label>Qual seu álbum favorito?</label>
+      <input type="text" id="comp-album" placeholder="Ex: Love Yourself, Map of the Soul...">
+    </div>
+
+    <button class="btn" id="btn-calc-comp" onclick="runCompatibility()">Analisar Conexão Real 🪐</button>
+
+    <div id="compatibility-result-area" style="display:none; text-align:center; animation: fadeIn 0.5s ease forwards; margin-top: 10px;">
+      <div class="radar-ring"><div class="radar-value" id="radar-percent">0%</div></div>
+      <p style="font-size:14px; line-height:1.6; color:var(--text-muted);">
+        Membro escolhido: <strong id="res-bias" style="color:#fff;"></strong><br>
+        Faixa musical: <strong id="res-song" style="color:#fff;"></strong><br>
+        <span style="color: var(--bts-neon); font-weight:700; display:block; margin-top:6px;">Sua sintonia com o universo ARMY é absoluta!</span>
+      </p>
+      <button class="btn" onclick="goToPhase6()">Ver o Presente Secreto 🎁</button>
+    </div>
+  </section>
+
+  <section id="screen-phase6-poem" class="screen">
+    <h2 style="font-family:'Dancing Script', cursive; font-size:32px; color:var(--bts-neon); margin-bottom:15px; text-align:center;">Para Você 💜</h2>
+    <div class="poem-layout">
+      Você é como uma flor rara,<br>
+      daquelas que a gente encontra uma única vez na vida.<br>
+      Quanto mais o tempo passa,<br>
+      mais percebo o quanto sua presença ilumina meus dias.<br><br>
+      Entre milhares de caminhos,<br>
+      foi o seu sorriso que ficou guardado na minha memória.<br>
+      Talvez eu não seja perfeito,<br>
+      talvez eu erre mais do que deveria,<br>
+      mas uma coisa é certa:<br>
+      Você se tornou uma das partes mais especiais da minha história.<br><br>
+      Se o BTS ensinou que devemos amar a nós mesmos,<br>
+      você me ensinou que também vale a pena amar alguém de verdade.<br>
+      E enquanto existir um amanhã,<br>
+      sempre vou guardar com carinho cada momento que vivi ao seu lado.<br><br>
+      Borahae 💜
+    </div>
+    <button class="btn" onclick="showFinalLetter()">Ler Mensagem de Alex ✉️</button>
+  </section>
+
+  <section id="screen-phase6-letter" class="screen">
+    <h2 style="color:var(--bts-neon); margin-bottom:15px;">Uma Carta Especial</h2>
+    <div class="letter-layout">
+      Parabéns por chegar até aqui.
+
+      Talvez você tenha começado este jogo apenas por diversão, mas a verdade é que cada fase escondia algo muito mais importante.
+      Escondidos entre perguntas, desafios e corações estavam pequenos pedaços dos sentimentos que tenho por você.
+
+      Existem pessoas que passam por nossa vida e são esquecidas com o tempo. Mas existem pessoas que deixam marcas que permanecem para sempre. Você é uma dessas pessoas.
+
+      Obrigado pelos momentos, pelas conversas, pelos sorrisos e até pelos desafios que enfrentamos. Independentemente do que o futuro reserve, quero que saiba que você é alguém extremamente especial para mim.
+
+      Espero que este presente consiga transmitir pelo menos uma pequena parte do que sinto.
+
+      Com carinho,
+      Alex 💜
+    </div>
+    <button class="btn" style="background: linear-gradient(135deg, #00f2fe, #7b2fff);" onclick="triggerUltimateGift()">🎁 Abrir Meu Presente Especial</button>
+  </section>
+
+  <section id="screen-final-universe" class="screen">
+    <div class="final-screen-design">
+      <div style="font-size: 55px; animation: float 3s ease-in-out infinite alternate; margin-bottom: 10px;">👑</div>
+      <h2 style="font-family:'Dancing Script', cursive; font-size:36px; color:var(--army-glow);">Meu Prêmio Real</h2>
+      
+      <div class="final-message-text">
+        Antes de fechar este jogo, quero que saiba uma última coisa...
+
+        Você não precisou acertar todas as perguntas.
+        Não precisou encontrar todos os corações.
+        Não precisou ser uma Army perfeita.
+
+        Porque o verdadeiro prêmio nunca foi chegar ao final.
+        O verdadeiro prêmio foi você.
+
+        Obrigado por existir.
+        Obrigado por ser exatamente quem você é.
+
+        E sempre que olhar para o céu, ouvir uma música do BTS ou lembrar deste dia, espero que se lembre também de uma pessoa que preparou tudo isso pensando em você.
+
+        Você é especial.
+        Você é importante.
+        E merece toda a felicidade do mundo.
+
+        💜 Borahae para sempre. 💜
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ─── AUDIO SYNTHESIZER ENGINE (SEM ARQUIVOS EXTERNOS) ───
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, type, duration) {
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  } catch(e){}
+}
+function soundSuccess() { playTone(523.25, 'sine', 0.15); setTimeout(()=>playTone(659.25, 'sine', 0.25), 100); }
+function soundFail() { playTone(293.66, 'triangle', 0.25); setTimeout(()=>playTone(220, 'triangle', 0.3), 120); }
+function soundBadge() { playTone(587.33, 'sine', 0.1); setTimeout(()=>playTone(880, 'sine', 0.15), 80); setTimeout(()=>playTone(1174.66, 'sine', 0.3), 160); }
+
+// ─── SISTEMA DE CONQUISTAS POPUP ───
+function unlockBadge(message) {
+  soundBadge();
+  const pop = document.getElementById('badge-popup');
+  document.getElementById('badge-text').innerText = message;
+  pop.style.top = '25px';
+  setTimeout(() => { pop.style.top = '-100px'; }, 3500);
+}
+
+// ─── BACKGROUND ANIMADO (CANVAS) ───
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resizeBg() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeBg); resizeBg();
+
+for(let i=0; i<65; i++) {
+  particles.push({
+    x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
+    r: Math.random()*2+0.5, speedY: Math.random()*0.4 + 0.1, alpha: Math.random()*0.6+0.2
+  });
+}
+function drawBg() {
+  ctx.fillStyle = '#06020c'; ctx.fillRect(0,0,W,H);
+  particles.forEach(p => {
+    p.y -= p.speedY; if(p.y < -10) { p.y = H+10; p.x = Math.random()*W; }
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(187, 134, 252, ${p.alpha})`; ctx.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+requestAnimationFrame(drawBg);
+
+// ─── CHUVA DE ELEMENTOS (CONFETES E CORAÇÕES) ───
+function createCascade(emoji, total) {
+  for(let i=0; i<total; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'fx-item'; el.innerText = emoji;
+      const startX = Math.random()*100; el.style.left = startX + 'vw'; el.style.top = '-40px';
+      const size = Math.random()*20+16; el.style.fontSize = size+'px';
+      const duration = Math.random()*2.5 + 2;
+      el.style.transition = `transform ${duration}s linear, opacity ${duration}s ease-out`;
+      if(emoji==='💜') el.style.filter = 'drop-shadow(0 0 8px rgba(123,47,255,0.8))';
+      document.body.appendChild(el);
+      setTimeout(() => {
+        el.style.transform = `translate(${Math.random()*20-10}vw, 105vh) rotate(${Math.random()*360}deg)`;
+        el.style.opacity = '0';
+      }, 50);
+      setTimeout(() => el.remove(), duration*1000+100);
+    }, i*45);
+  }
+}
+
+// ─── LOGICA DO JOGO GLOBAL ───
+let selectedBiasEmoji = '👑', selectedBiasName = 'OT7';
+function selectAvatar(emoji, name) {
+  selectedBiasEmoji = emoji; selectedBiasName = name;
+  document.querySelectorAll('.avatar-card').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  playTone(440, 'sine', 0.1);
+}
+function navigate(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function startJourney() {
+  unlockBadge(`Aventura iniciada com ${selectedBiasName}!`);
+  initQuiz(); navigate('screen-phase1');
+}
+
+// ─── FASE 1: BANCO DE QUESTÕES DO QUIZ ───
+const quizData = [
+  { q: "Em qual ano o BTS fez o seu debut oficial?", o: ["2011", "2012", "2013", "2014"], a: 2 },
+  { q: "Qual o significado oficial da sigla BTS?", o: ["Bangtan Boys", "Bangtan Sonyeondan", "Beyond The Scene", "Ambas alternativas B e C"], a: 3 },
+  { q: "Quem é o líder oficial do grupo?", o: ["Jin", "Suga", "RM", "j-hope"], a: 2 },
+  { q: "Qual foi o primeiro videoclipe do BTS a atingir 1 bilhão de views?", o: ["DNA", "Dynamite", "Boy With Luv", "Fake Love"], a: 0 },
+  { q: "Qual membro é carinhosamente chamado de 'Worldwide Handsome'?", o: ["V", "Jimin", "Jin", "Jungkook"], a: 2 },
+  { q: "Qual a cor oficial que representa o amor entre o BTS e as ARMYs?", o: ["Azul", "Roxo", "Rosa", "Preto"], a: 1 },
+  { q: "Quem compôs e produziu a famosa faixa solo 'Daechwita'?", o: ["RM", "Agust D (Suga)", "j-hope", "Jungkook"], a: 1 },
+  { q: "Qual música do BTS foi a primeira canção coreana a estrear em #1 na Billboard Hot 100?", o: ["Dynamite", "Life Goes On", "Butter", "ON"], a: 1 },
+  { q: "Quem é o membro mais jovem (Maknae) do grupo?", o: ["Jimin", "V", "Jungkook", "Suga"], a: 2 },
+  { q: "Complete a icônica frase criada por V: 'I _____ you.'", o: ["Love", "Purple", "Trust", "Miss"], a: 1 },
+  { q: "Qual mixtape solo lançada por j-hope fez história mundial em 2018?", o: ["Hope World", "Jack In The Box", "Mono", "D-2"], a: 0 },
+  { q: "Qual é o nome do universo de personagens criados pelo BTS em parceria com a Line Friends?", o: ["TinyTAN", "BT21", "Kakao Friends", "BTS World"], a: 1 },
+  { q: "Qual membro pratica dança contemporânea e estudou na Busan High School of Arts?", o: ["V", "Jungkook", "Jimin", "j-hope"], a: 3 },
+  { q: "Qual álbum clássico contém as famosas eras 'I Need U' e 'Run'?", o: ["Wings", "Dark & Wild", "The Most Beautiful Moment in Life", "You Never Walk Alone"], a: 2 },
+  { q: "Qual o nome do reality show onde eles viajam e cumprem missões hilárias juntos?", o: ["Run BTS!", "In the SOOP", "Bon Voyage", "American Hustle Life"], a: 0 }
+];
+
+let currentQIdx = 0, quizScore = 0;
+function initQuiz() { currentQIdx = 0; quizScore = 0; showQuestion(); }
+function showQuestion() {
+  document.getElementById('quiz-progress-text').innerText = `Pergunta ${currentQIdx+1} de 15`;
+  document.getElementById('quiz-score-live').innerText = `Pontos: ${quizScore}`;
+  document.getElementById('quiz-progress-bar').style.width = ((currentQIdx)/15)*100 + '%';
+  
+  const currentItem = quizData[currentQIdx];
+  document.getElementById('question-text').innerText = currentItem.q;
+  const container = document.getElementById('options-container');
+  container.innerHTML = '';
+
+  currentItem.o.forEach((opt, idx) => {
+    const b = document.createElement('button'); b.className = 'opt-btn'; b.innerText = opt;
+    b.onclick = () => validateAnswer(idx, b); container.appendChild(b);
+  });
+}
+function validateAnswer(chosenIdx, clickedBtn) {
+  const correctIdx = quizData[currentQIdx].a;
+  const btns = document.querySelectorAll('.opt-btn');
+  btns.forEach(b => b.removeAttribute('onclick')); // Trava cliques
+
+  if(chosenIdx === correctIdx) {
+    clickedBtn.classList.add('correct'); quizScore++; soundSuccess();
+    createCascade('✨', 8);
+  } else {
+    clickedBtn.classList.add('wrong'); btns[correctIdx].classList.add('correct'); soundFail();
+  }
+
+  setTimeout(() => {
+    currentQIdx++;
+    if(currentQIdx < quizData.length) { showQuestion(); } 
+    else { showQuizResults(); }
+  }, 1600);
+}
+
+function showQuizResults() {
+  document.getElementById('quiz-final-correct').innerText = quizScore;
+  let label = "";
+  if(quizScore <= 4) label = "💜 Army Iniciante";
+  else if(quizScore <= 8) label = "💜 Fã do BTS";
+  else if(quizScore <= 11) label = "💜 Army Dedicada";
+  else if(quizScore <= 14) label = "💜 Super Army";
+  else label = "👑 Army de Verdade";
+  
+  document.getElementById('quiz-rank-label').innerText = label;
+  unlockBadge("Fase 1 Completa!");
+  navigate('screen-phase1-result');
+}
+
+// ─── FASE 2: CAÇA AO CORAÇÃO ───
+let heartsFound = 0; const targetHearts = 8;
+function goToPhase2() { navigate('screen-phase2'); spawnHearts(); }
+function spawnHearts() {
+  const ground = document.getElementById('heart-ground'); ground.innerHTML = '';
+  heartsFound = 0; document.getElementById('heart-counter').innerText = `Encontrados: 0 / ${targetHearts}`;
+  document.getElementById('heart-success-msg').style.display = 'none';
+
+  for(let i=0; i<targetHearts; i++) {
+    const h = document.createElement('div'); h.className = 'hidden-heart'; h.innerText = '💜';
+    h.style.left = Math.random()*85 + 5 + '%'; h.style.top = Math.random()*85 + 5 + '%';
+    h.onclick = (e) => {
+      e.target.remove(); heartsFound++; soundSuccess();
+      document.getElementById('heart-counter').innerText = `Encontrados: ${heartsFound} / ${targetHearts}`;
+      createCascade('🫧', 5);
+      if(heartsFound === targetHearts) {
+        unlockBadge("Visão Perfeita! Todos achados.");
+        document.getElementById('heart-success-msg').style.display = 'block';
+      }
+    };
+    ground.appendChild(h);
+  }
+}
+
+// ─── FASE 3: JOGO DA MEMÓRIA ───
+const memoryItems = ['🐨','🐨','🐹','🐹','🐱','🐱','🐿️','🐿️','🐥','🐥','🐯','🐯','🐰','🐰','🔮','🔮'];
+let flippedCards = [], matchedPairs = 0, memoryMoves = 0;
+
+function goToPhase3() { navigate('screen-phase3'); setupMemoryBoard(); }
+function setupMemoryBoard() {
+  const board = document.getElementById('memory-board'); board.innerHTML = '';
+  flippedCards = []; matchedPairs = 0; memoryMoves = 0;
+  document.getElementById('memory-clicks').innerText = "Tentativas: 0";
+  document.getElementById('btn-memory-next').style.display = 'none';
+
+  // Shuffle items
+  const shuffled = [...memoryItems].sort(() => Math.random() - 0.5);
+  shuffled.forEach((emoji, idx) => {
+    const c = document.createElement('div'); c.className = 'memory-card'; c.dataset.value = emoji;
+    c.innerHTML = `<span class="card-front">${emoji}</span><span class="card-back">💜</span>`;
+    c.onclick = () => flipMemoryCard(c); board.appendChild(c);
+  });
+}
+function flipMemoryCard(card) {
+  if(card.classList.contains('flipped') || flippedCards.length >= 2) return;
+  card.classList.add('flipped'); flippedCards.push(card); playTone(600, 'sine', 0.05);
+
+  if(flippedCards.length === 2) {
+    memoryMoves++; document.getElementById('memory-clicks').innerText = `Tentativas: ${memoryMoves}`;
+    const [c1, c2] = flippedCards;
+    if(c1.dataset.value === c2.dataset.value) {
+      matchedPairs++; flippedCards = []; soundSuccess();
+      c1.style.animation = 'pulse 0.5s ease'; c2.style.animation = 'pulse 0.5s ease';
+      if(matchedPairs === 8) {
+        unlockBadge("Mente Brilhante! Par perfeito.");
+        document.getElementById('btn-memory-next').style.display = 'block';
+        createCascade('✨', 20);
+      }
+    } else {
+      soundFail();
+      setTimeout(() => { c1.classList.remove('flipped'); c2.classList.remove('flipped'); flippedCards = []; }, 1000);
+    }
+  }
+}
+
+// ─── FASE 4: HISTÓRIA INTERATIVA ───
+const storyData = {
+  start: {
+    t: "As luzes do estádio se apagam, o mar de Army Bombs brilha em roxo. Você está na grade e, de repente, durante 'Anpanman', os meninos notam o seu cartaz e acenam diretamente para você! O show termina e a produção te chama para o Backstage. O que você faz?",
+    c: [
+      { text: "Pedir uma foto com todos juntos", next: "foto" },
+      { text: "Conversar calmamente com eles", next: "conversa" },
+      { text: "Ficar tímida e apenas assistir eles saindo", next: "timida" }
+    ]
+  },
+  foto: {
+    t: "Eles se juntam ao seu redor sorrindo! V faz uma careta fofa, e Jungkook segura a câmera. A foto fica perfeita e inesquecível. Logo após, RM te agradece pelo apoio contínuo. Como você responde?",
+    c: [
+      { text: "Dizer que eles salvaram seus dias difíceis", next: "emocionante" },
+      { text: "Entregar um presente feito à mão", next: "presente" }
+    ]
+  },
+  conversa: {
+    t: "Você se senta com eles. Suga te oferece uma garrafa d'água e Jin faz uma de suas piadas de tio para quebrar o gelo. Você começa a conversar sobre como as letras deles te inspiram. Jimin te ouve com os olhos brilhando.",
+    c: [
+      { text: "Perguntar sobre os próximos sonhos deles", next: "futuro" },
+      { text: "Cantar um pequeno trecho de Spring Day", next: "cantar" }
+    ]
+  },
+  timida: {
+    t: "Você congela de emoção. V percebe o seu nervosismo, caminha até você com um sorriso acolhedor e te entrega um Army Bomb autografado por todos os sete membros, dizendo: 'Obrigado por ser nossa luz'.",
+    c: [
+      { text: "Agradecer com um abraço sincero", next: "final_afeto" },
+      { text: "Guardar o bastão como seu maior tesouro", next: "final_tesouro" }
+    ]
+  },
+  emocionante: { t: "Finais Felizes: As lágrimas correm e J-Hope te abraça dizendo que o propósito do BTS sempre foi esse. Você sai do estádio sabendo que faz parte de algo gigante. 💜", c: [] },
+  presente: { t: "Finais Felizes: Eles abrem o presente artesanal juntos. JK fica impressionado com os detalhes e promete deixar no camarim principal deles. Você mudou o dia deles! 🎨", c: [] },
+  futuro: { t: "Finais Felizes: RM explica que o maior sonho deles é continuar ao lado das Armys por mais dez, vinte anos. Você se despede sabendo que o laço de vocês é eterno. 🪐", c: [] },
+  cantar: { t: "Finais Felizes: Jimin e Jin começam a fazer a harmonia junto com você na sala! Uma pequena performance particular que vai ficar gravada para sempre na sua mente. 🎤", c: [] },
+  final_afeto: { t: "Finais Felizes: O abraço quebra toda a distância. Eles aplaudem sua autenticidade e você ganha um passe VIP permanente para os próximos shows mundiais. 🎟️", c: [] },
+  final_tesouro: { t: "Finais Felizes: Você segura o bastão contra o peito. Ao sair, percebe que no verso do autógrafo há uma pequena mensagem dizendo: 'Continue brilhando'. Você venceu na vida! 🌟", c: [] }
+};
+
+function goToPhase4() { navigate('screen-phase4'); renderStoryNode('start'); }
+function renderStoryNode(nodeKey) {
+  const node = storyData[nodeKey];
+  document.getElementById('story-display-text').innerText = node.t;
+  const box = document.getElementById('story-choices-box'); box.innerHTML = '';
+
+  if(node.c.length === 0) {
+    unlockBadge("História Vivenciada!");
+    const b = document.createElement('button'); b.className = 'btn'; b.innerText = "Ir para Fase 5: Afinidade ➡️";
+    b.onclick = () => navigate('screen-phase5'); box.appendChild(b);
+  } else {
+    node.c.forEach(choice => {
+      const b = document.createElement('button'); b.className = 'opt-btn'; b.innerText = choice.text;
+      b.onclick = () => { playTone(500, 'sine', 0.08); renderStoryNode(choice.next); };
+      box.appendChild(b);
+    });
+  }
+}
+
+// ─── FASE 5: COMPATIBILIDADE ───
+function runCompatibility() {
+  const song = document.getElementById('comp-song').value.trim();
+  const album = document.getElementById('comp-album').value.trim();
+  if(!song || !album) { alert("Por favor, preencha todos os campos mágicos! 💜"); return; }
+
+  document.getElementById('btn-calc-comp').style.display = 'none';
+  const resArea = document.getElementById('compatibility-result-area');
+  resArea.style.display = 'block';
+
+  // Gerar valor aleatório/divertido entre 80 e 100
+  const targetPercent = Math.floor(Math.random() * 21) + 80;
+  let currentPercent = 0; soundSuccess();
+
+  const counterInterval = setInterval(() => {
+    currentPercent++; document.getElementById('radar-percent').innerText = currentPercent + '%';
+    playTone(700 + currentPercent, 'sine', 0.01);
+    if(currentPercent >= targetPercent) {
+      clearInterval(counterInterval);
+      document.getElementById('res-bias').innerText = selectedBiasName;
+      document.getElementById('res-song').innerText = song;
+      unlockBadge("Almas Gêmeas ARMY!");
+      createCascade('💜', 25);
+    }
+  }, 25);
+}
+
+function goToPhase6() { navigate('screen-phase6-poem'); createCascade('🌸', 30); }
+function showFinalLetter() { navigate('screen-phase6-letter'); createCascade('✨', 35); }
+
+// ─── EVENTO FINAL DE DESBLOQUEIO SUPREMO ───
+function triggerUltimateGift() {
+  navigate('screen-final-universe');
+  // Explosão massiva de comemoração
+  createCascade('💜', 40);
+  setTimeout(()=>createCascade('🌸', 40), 500);
+  setTimeout(()=>createCascade('✨', 40), 1000);
+  
+  // Melodia final sintetizada (Arpejo festivo)
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((n, i) => { setTimeout(()=>playTone(n, 'sine', 0.4), i*150); });
+}
+</script>
+</body>
+</html>
